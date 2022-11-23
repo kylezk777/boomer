@@ -104,7 +104,7 @@ func (r *runner) outputOnEevent(data map[string]interface{}) {
 	wg.Wait()
 }
 
-func (r *runner) outputOnStop() {
+func (r *runner) outputOnStop(data map[string]interface{}) {
 	size := len(r.outputs)
 	if size == 0 {
 		return
@@ -113,7 +113,7 @@ func (r *runner) outputOnStop() {
 	wg.Add(size)
 	for _, output := range r.outputs {
 		go func(o Output) {
-			o.OnStop()
+			o.OnStop(data)
 			wg.Done()
 		}(output)
 	}
@@ -259,7 +259,9 @@ func (r *localRunner) run() {
 				Events.Publish(EVENT_QUIT)
 				r.stop()
 				wg.Done()
-				r.outputOnStop()
+				for data := range r.stats.messageToRunnerChan {
+					r.outputOnStop(data)
+				}
 				return
 			}
 		}
@@ -505,7 +507,9 @@ func (r *slaveRunner) run() {
 				r.client.sendChannel() <- newGenericMessage("stats", data, r.nodeID)
 				r.outputOnEevent(data)
 			case <-r.shutdownChan:
-				r.outputOnStop()
+				for data := range r.stats.messageToRunnerChan {
+					r.outputOnStop(data)
+				}
 				return
 			}
 		}

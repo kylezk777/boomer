@@ -30,7 +30,7 @@ type Output interface {
 	OnEvent(data map[string]interface{})
 
 	// OnStop will be called before the test ends.
-	OnStop()
+	OnStop(data map[string]interface{})
 }
 
 // ConsoleOutput is the default output for standalone mode.
@@ -111,8 +111,12 @@ func (o *ConsoleOutput) OnStart() {
 }
 
 // OnStop of ConsoleOutput has nothing to do.
-func (o *ConsoleOutput) OnStop() {
-
+func (o *ConsoleOutput) OnStop(data map[string]interface{}) {
+	if data == nil {
+		return
+	}
+	fmt.Println("OnStop print")
+	o.OnEvent(data)
 }
 
 // OnEvent will print to the console.
@@ -369,7 +373,7 @@ func (o *PrometheusPusherOutput) OnStart() {
 }
 
 // OnStop of PrometheusPusherOutput has nothing to do.
-func (o *PrometheusPusherOutput) OnStop() {
+func (o *PrometheusPusherOutput) OnStop(data map[string]interface{}) {
 
 }
 

@@ -3,6 +3,7 @@ package boomer
 import (
 	"math"
 	"testing"
+	"time"
 )
 
 func TestGetMedianResponseTime(t *testing.T) {
@@ -106,6 +107,6 @@ func TestConsoleOutput(t *testing.T) {
 	data["stats_total"] = stat
 
 	o.OnEvent(data)
-
-	o.OnStop()
+	time.Sleep(time.Second * 1)
+	o.OnStop(data)
 }

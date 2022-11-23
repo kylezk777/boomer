@@ -1,8 +1,12 @@
 package boomer
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -23,7 +27,7 @@ func (o *HitOutput) OnEvent(data map[string]interface{}) {
 	o.onEvent = true
 }
 
-func (o *HitOutput) OnStop() {
+func (o *HitOutput) OnStop(data map[string]interface{}) {
 	o.onStop = true
 }
 
@@ -70,7 +74,7 @@ func TestOutputOnStop(t *testing.T) {
 	runner := &runner{}
 	runner.addOutput(hitOutput)
 	runner.addOutput(hitOutput2)
-	runner.outputOnStop()
+	runner.outputOnStop(nil)
 	if !hitOutput.onStop {
 		t.Error("hitOutput's OnStop has not been called")
 	}
@@ -90,7 +94,7 @@ func TestLocalRunner(t *testing.T) {
 	tasks := []*Task{taskA}
 	runner := newLocalRunner(tasks, nil, 2, 2)
 	go runner.run()
-	time.Sleep(4 * time.Second)
+	time.Sleep(14 * time.Second)
 	runner.shutdown()
 }
 
@@ -600,4 +604,44 @@ func TestGetReady(t *testing.T) {
 	if userCount != int64(10) {
 		t.Error("User count mismatch, expect: 10, got:", userCount)
 	}
+}
+
+func TestLocalRunnerOutPut(t *testing.T) {
+	taskA := &Task{
+		Weight: 10,
+		Fn: func() {
+			time.Sleep(time.Second)
+		},
+		Name: "TaskA",
+	}
+	tasks := []*Task{taskA}
+	boomer := NewStandaloneBoomer(2, 2)
+	boomer.AddOutput(NewConsoleOutput())
+	boomer.Run(tasks...)
+
+	WaitForQuit(boomer)
+}
+
+func WaitForQuit(boomer *Boomer) {
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	quitByMe := false
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+		<-c
+		fmt.Println("try to ctrl+c")
+		quitByMe = true
+		boomer.Quit()
+		wg.Done()
+	}()
+
+	Events.Subscribe("boomer:quit", func() {
+		if !quitByMe {
+			wg.Done()
+		}
+	})
+
+	wg.Wait()
 }
